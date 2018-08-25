@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/proxy"
 )
 
 func main() {
@@ -28,10 +29,25 @@ func main() {
 	updates, err := bot.GetUpdatesChan(u)
 
 	for update := range updates {
+		if update.Message == nil {
+			continue
+		}
 		userName := update.Message.From.UserName
 		userMessage := update.Message.Text
 		msgChatID := update.Message.Chat.ID
 		log.Printf("[%s] %s", userName, userMessage)
+
+		if update.Message.IsCommand() {
+			msg := tgbotapi.NewMessage(msgChatID, "")
+			switch update.Message.Command() {
+			case "start":
+				msg.Text = "Hello!\nI calculate how many Cyrillic characters are in the articles on the medium"
+			default:
+				msg.Text = "I don't know that command"
+			}
+			bot.Send(msg)
+			continue
+		}
 
 		if !utils.IsCorrectURL(userMessage) {
 			msg := tgbotapi.NewMessage(msgChatID, "Error!\nOnly website http[s]://medium.com/...")
@@ -42,11 +58,23 @@ func main() {
 				colly.Async(true),
 			)
 
+			var domain string = utils.GetDomain(userMessage)
+			if domain == "telegra" {
+				rp, err := proxy.RoundRobinProxySwitcher(config.Proxies...)
+				if err != nil {
+					log.Fatal("Error when installing proxy, err") // send message to telegram
+				}
+				c.SetProxyFunc(rp)
+			}
+
 			var contentPage string
-			var querySelector = `.postArticle-content`
+			var querySelectors map[string][]string = map[string][]string{
+				"medium":    {`.postArticle-content`, "section"},
+				"telegraph": {`.tl_article`, "article"},
+			}
 
 			c.OnHTML(querySelector, func(e *colly.HTMLElement) {
-				var tag string = "section"
+				var tag string = querySelectors[domain][1]
 				contentPage = e.ChildText(tag)
 			})
 
