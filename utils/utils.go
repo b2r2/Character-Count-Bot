@@ -18,3 +18,9 @@ func IsCorrectURL(url string) bool {
 	}
 	return state
 }
+
+func GetDomain(url string) string {
+	line := strings.Split(url, "://")
+	line = strings.Split(line[1], ".")
+	return line[0]
+}
