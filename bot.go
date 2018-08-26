@@ -32,60 +32,54 @@ func main() {
 		if update.Message == nil {
 			continue
 		}
-		userName := update.Message.From.UserName
 		userMessage := update.Message.Text
 		msgChatID := update.Message.Chat.ID
-		log.Printf("[%s] %s", userName, userMessage)
+		log.Printf("[%s] %s", update.Message.From.UserName, userMessage)
 
 		if update.Message.IsCommand() {
 			msg := tgbotapi.NewMessage(msgChatID, "")
 			switch update.Message.Command() {
 			case "start":
-				msg.Text = "Hello!\nI calculate how many Cyrillic characters are in the articles on the medium"
+				msg.Text = "Hello!\nI calculate how many Cyrillic characters are in the articles on the medium or telegraph"
 			default:
 				msg.Text = "I don't know that command"
 			}
 			bot.Send(msg)
 			continue
 		}
-
 		if !utils.IsCorrectURL(userMessage) {
-			msg := tgbotapi.NewMessage(msgChatID, "Error!\nOnly website http[s]://medium.com/...")
+			msg := tgbotapi.NewMessage(msgChatID, "Error!\nOnly website http[s]://...")
 			bot.Send(msg)
 		} else {
-
 			c := colly.NewCollector(
 				colly.Async(true),
 			)
-
 			var domain string = utils.GetDomain(userMessage)
 			if domain == "telegra" {
-				rp, err := proxy.RoundRobinProxySwitcher(config.Proxies...)
+				rp, err := proxy.RoundRobinProxySwitcher(config.Configuration["PROXY"])
 				if err != nil {
-					log.Fatal("Error when installing proxy, err") // send message to telegram
+					text := "Error when installing proxy\n" + err.Error()
+					msg := tgbotapi.NewMessage(msgChatID, text)
+					bot.Send(msg)
 				}
 				c.SetProxyFunc(rp)
 			}
-
 			var contentPage string
 			var querySelectors map[string][]string = map[string][]string{
-				"medium":    {`.postArticle-content`, "section"},
-				"telegraph": {`.tl_article`, "article"},
+				"medium":  {`.postArticle-content`, "section"},
+				"telegra": {`.tl_article`, "article"},
 			}
-
+			var querySelector string = querySelectors[domain][0]
 			c.OnHTML(querySelector, func(e *colly.HTMLElement) {
 				var tag string = querySelectors[domain][1]
 				contentPage = e.ChildText(tag)
 			})
-
 			c.Limit(&colly.LimitRule{
 				Parallelism: 2,
 				RandomDelay: 5 * time.Second,
 			})
-
 			c.Visit(userMessage)
 			c.Wait()
-
 			preparedText, err := parsePage(contentPage)
 			if err != nil {
 				log.Fatal(err)
@@ -94,7 +88,6 @@ func main() {
 			msg := tgbotapi.NewMessage(msgChatID, size)
 			bot.Send(msg)
 		}
-
 	}
 }
 
@@ -104,7 +97,6 @@ func parsePage(contentPage string) (string, error) {
 		return "", err
 	}
 	temp := re.FindAllString(contentPage, -1)
-
 	var totString string
 	for _, t := range temp {
 		totString += t
