@@ -2,4 +2,5 @@ package config
 
 var Configuration map[string]string = map[string]string{
 	"TOKEN": "string",
+	"PROXY": "your proxy",
 }
