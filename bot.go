@@ -1,9 +1,10 @@
 package main
 
 import (
-	"Character-Count-Bot/config"
 	"Character-Count-Bot/utils"
+	"encoding/json"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -14,8 +15,20 @@ import (
 	"github.com/gocolly/colly/proxy"
 )
 
+type Config struct {
+	Token string
+	Proxy string
+}
+
 func main() {
-	bot, err := tgbotapi.NewBotAPI(config.Configuration["TOKEN"])
+	file, _ := os.Open("config.json")
+	decoder := json.NewDecoder(file)
+	configuration := Config{}
+	err := decoder.Decode(&configuration)
+	if err != nil {
+		log.Panic(err)
+	}
+	bot, err := tgbotapi.NewBotAPI(configuration.Token)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -56,7 +69,7 @@ func main() {
 			)
 			var domain string = utils.GetDomain(userMessage)
 			if domain == "telegra" {
-				rp, err := proxy.RoundRobinProxySwitcher(config.Configuration["PROXY"])
+				rp, err := proxy.RoundRobinProxySwitcher(configuration.Proxy)
 				if err != nil {
 					text := "Error when installing proxy\n" + err.Error()
 					msg := tgbotapi.NewMessage(msgChatID, text)
