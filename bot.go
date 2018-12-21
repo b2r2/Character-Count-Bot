@@ -10,14 +10,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gocolly/colly"
-	"github.com/gocolly/colly/proxy"
 )
 
 type Config struct {
 	Token string
-	Proxy string
 }
 
 func main() {
@@ -67,21 +65,16 @@ func main() {
 			c := colly.NewCollector(
 				colly.Async(true),
 			)
-			var domain string = utils.GetDomain(userMessage)
-			if domain == "telegra" {
-				rp, err := proxy.RoundRobinProxySwitcher(configuration.Proxy)
-				if err != nil {
-					text := "Error when installing proxy\n" + err.Error()
-					msg := tgbotapi.NewMessage(msgChatID, text)
-					bot.Send(msg)
-				}
-				c.SetProxyFunc(rp)
+			var comp = regexp.MustCompile("edit$")
+			if comp.MatchString(userMessage) {
+				userMessage = comp.ReplaceAllString(userMessage, "")
 			}
 			var contentPage string
 			var querySelectors map[string][]string = map[string][]string{
 				"medium":  {`.postArticle-content`, "section"},
 				"telegra": {`.tl_article`, "article"},
 			}
+			var domain string = utils.GetDomain(userMessage)
 			var querySelector string = querySelectors[domain][0]
 			c.OnHTML(querySelector, func(e *colly.HTMLElement) {
 				var tag string = querySelectors[domain][1]
