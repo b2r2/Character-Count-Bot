@@ -1,3 +1,7 @@
 {
-    "Token": "telegram token"
+    "Token": "telegram_token",
+    "Scraping":{
+    	"Medium": "medium",
+    	"Site": "your_domain"
+	}
 }
