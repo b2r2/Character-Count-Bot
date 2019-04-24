@@ -7,18 +7,17 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func Init(token string, state bool) (*tgbotapi.BotAPI, error) {
-	bot, err := tgbotapi.NewBotAPI(token)
+func Start(state bool, configFile string) {
+	var c Config
+	c.LoadScrapingConfiguration(configFile)
+
+	b, err := tgbotapi.NewBotAPI(c.Token)
 	if err != nil {
-		return nil, err
+		log.Panic(err)
 	}
-	bot.Debug = state
+	b.Debug = state
 
-	log.Printf("Authorized on account %s,\nDebuging mode: %t", bot.Self.UserName, state)
-	return bot, nil
-}
-
-func Start(b *tgbotapi.BotAPI) {
+	log.Printf("Authorized on account %s,\nDebuging mode: %t", b.Self.UserName, state)
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
@@ -46,11 +45,11 @@ func Start(b *tgbotapi.BotAPI) {
 			b.Send(message)
 			continue
 		}
-		if !IsCorrectURL(userMessage) {
+		if !IsCorrectURL(userMessage, &c) {
 			message := tgbotapi.NewMessage(chatIdMessage, "Error!\nOnly website http[s]://...")
 			b.Send(message)
 		} else {
-			size := StartScrape(userMessage)
+			size := StartScrape(userMessage, &c)
 			message := tgbotapi.NewMessage(chatIdMessage, strconv.Itoa(size))
 			b.Send(message)
 		}
