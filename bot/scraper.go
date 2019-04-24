@@ -22,18 +22,16 @@ func StartScrape(userMessage string, c *Config) int {
 	if comp.MatchString(userMessage) {
 		userMessage = fmt.Sprintf(userMessage + "?no_cache")
 	}
-	pageNumber := func(s string) string {
-		re := regexp.MustCompile(`[0-9]+`)
-		result := re.FindAllString(userMessage, -1)
-		return result[0]
-	}
-	var contentPage string
 	var querySelectors map[string][]string = map[string][]string{
 		c.Scraping.Medium: {`.postArticle-content`, "section"},
-		c.Scraping.Site:   {fmt.Sprintf(`.post-%s`, pageNumber(userMessage)), `.td-post-content`},
+		c.Scraping.Site: {fmt.Sprintf(`.post-%s`, func(s string) string {
+			re := regexp.MustCompile(`[0-9]+`)
+			return re.FindAllString(s, -1)[0]
+		}(userMessage)), `.td-post-content`},
 	}
 	var domain string = GetDomain(userMessage)
 	var querySelector string = querySelectors[domain][0]
+	var contentPage string
 	col.OnHTML(querySelector, func(e *colly.HTMLElement) {
 		var tag string = querySelectors[domain][1]
 		contentPage = e.ChildText(tag)
