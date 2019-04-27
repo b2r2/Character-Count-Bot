@@ -4,10 +4,10 @@ import (
 	"strings"
 )
 
-func IsCorrectURL(url string) bool {
+func IsCorrectURL(url string, c *Config) bool {
 	correctUrl := []string{
-		"medium",
-		"telegra",
+		c.Scraping.Medium,
+		c.Scraping.Site,
 	}
 	state := false
 	line := strings.Split(url, "://")

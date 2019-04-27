@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"log"
 	"regexp"
 	"time"
@@ -9,31 +10,38 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func StartScrape(userMessage string) int {
-	c := colly.NewCollector(
+func StartScrape(userMessage string, c *Config) int {
+	col := colly.NewCollector(
 		colly.Async(true),
 	)
 	var comp = regexp.MustCompile("edit$")
 	if comp.MatchString(userMessage) {
 		userMessage = comp.ReplaceAllString(userMessage, "")
 	}
-	var contentPage string
+	comp = regexp.MustCompile(c.Scraping.Site)
+	if comp.MatchString(userMessage) {
+		userMessage = fmt.Sprintf(userMessage + "?no_cache")
+	}
 	var querySelectors map[string][]string = map[string][]string{
-		"medium":  {`.postArticle-content`, "section"},
-		"telegra": {`.tl_article`, "article"},
+		c.Scraping.Medium: {`.postArticle-content`, "section"},
+		c.Scraping.Site: {fmt.Sprintf(`.post-%s`, func(s string) string {
+			re := regexp.MustCompile(`[0-9]+`)
+			return re.FindAllString(s, -1)[0]
+		}(userMessage)), `.td-post-content`},
 	}
 	var domain string = GetDomain(userMessage)
 	var querySelector string = querySelectors[domain][0]
-	c.OnHTML(querySelector, func(e *colly.HTMLElement) {
+	var contentPage string
+	col.OnHTML(querySelector, func(e *colly.HTMLElement) {
 		var tag string = querySelectors[domain][1]
 		contentPage = e.ChildText(tag)
 	})
-	c.Limit(&colly.LimitRule{
+	col.Limit(&colly.LimitRule{
 		Parallelism: 2,
 		RandomDelay: 5 * time.Second,
 	})
-	c.Visit(userMessage)
-	c.Wait()
+	col.Visit(userMessage)
+	col.Wait()
 	preparedText, err := parsePage(contentPage)
 	if err != nil {
 		log.Fatal(err)
