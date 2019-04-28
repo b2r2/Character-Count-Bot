@@ -6,8 +6,8 @@ import (
 
 func IsCorrectURL(url string, c *Config) bool {
 	correctUrl := []string{
-		c.Scraping.Medium,
-		c.Scraping.Site,
+		c.Medium,
+		c.Site.Domain,
 	}
 	state := false
 	line := strings.Split(url, "://")

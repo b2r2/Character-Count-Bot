@@ -1,7 +1,10 @@
 {
     "Token": "telegram_token",
-    "Scraping":{
-    	"Medium": "medium",
-    	"Site": "your_domain"
-	}
+    "Medium": "medium",
+    "Site":{
+	"Login": "user_login",
+	"Password": "user_password",
+	"Domain": "domain your site",
+	"URL": "your-site/wp-json/wp/v2/posts/"
+    }
 }

@@ -1,8 +1,9 @@
 package bot
 
 import (
-	"fmt"
-	"log"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"regexp"
 	"time"
 	"unicode/utf8"
@@ -10,55 +11,92 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func StartScrape(userMessage string, c *Config) int {
+func GetCountSymbolsInArticle(userMessage string, c *Config) (int, error) {
+	var content string
+	var err error
+	if comp := regexp.MustCompile(c.Site.Domain); comp.MatchString(userMessage) {
+		content, err = scrapeSite(userMessage, c)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		content, err = scrapeMedium(c.Medium, userMessage)
+		if err != nil {
+			return 0, err
+		}
+	}
+	text, err := parse(content)
+	if err != nil {
+		return 0, err
+	}
+	size := utf8.RuneCountInString(text)
+	return size, nil
+}
+
+func scrapeMedium(domain, url string) (string, error) {
 	col := colly.NewCollector(
 		colly.Async(true),
 	)
-	var comp = regexp.MustCompile("edit$")
-	if comp.MatchString(userMessage) {
-		userMessage = comp.ReplaceAllString(userMessage, "")
-	}
-	comp = regexp.MustCompile(c.Scraping.Site)
-	if comp.MatchString(userMessage) {
-		userMessage = fmt.Sprintf(userMessage + "?no_cache")
+	if comp := regexp.MustCompile("edit$"); comp.MatchString(url) {
+		url = comp.ReplaceAllString(url, "")
 	}
 	var querySelectors map[string][]string = map[string][]string{
-		c.Scraping.Medium: {`.postArticle-content`, "section"},
-		c.Scraping.Site: {fmt.Sprintf(`.post-%s`, func(s string) string {
-			re := regexp.MustCompile(`[0-9]+`)
-			return re.FindAllString(s, -1)[0]
-		}(userMessage)), `.td-post-content`},
+		domain: {`.postArticle-content`, "section"},
 	}
-	var domain string = GetDomain(userMessage)
+	var text string
 	var querySelector string = querySelectors[domain][0]
-	var contentPage string
 	col.OnHTML(querySelector, func(e *colly.HTMLElement) {
 		var tag string = querySelectors[domain][1]
-		contentPage = e.ChildText(tag)
+		text = e.ChildText(tag)
 	})
 	col.Limit(&colly.LimitRule{
 		Parallelism: 2,
 		RandomDelay: 5 * time.Second,
 	})
-	col.Visit(userMessage)
+	col.Visit(url)
 	col.Wait()
-	preparedText, err := parsePage(contentPage)
-	if err != nil {
-		log.Fatal(err)
-	}
-	size := utf8.RuneCountInString(preparedText)
-	return size
+	return text, nil
 }
 
-func parsePage(contentPage string) (string, error) {
+func scrapeSite(url string, c *Config) (string, error) {
+	var wpr WPResponse
+	var postNumber string
+	re := regexp.MustCompile(`[0-9]+`)
+	if re.MatchString(url) {
+		postNumber = string(re.Find([]byte(url)))
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", c.Site.URL+postNumber, nil)
+	if err != nil {
+		return "", err
+	}
+	req.SetBasicAuth(c.Site.Login, c.Site.Password)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	resp.Body.Close()
+	err = json.Unmarshal(data, &wpr)
+	if err != nil {
+		return "", err
+	}
+	return wpr.Content.Rendered, nil
+}
+
+func parse(text string) (string, error) {
 	re, err := regexp.Compile("\\p{Cyrillic}")
 	if err != nil {
 		return "", err
 	}
-	temp := re.FindAllString(contentPage, -1)
-	var totString string
+	temp := re.FindAllString(text, -1)
+	var total string
 	for _, t := range temp {
-		totString += t
+		total += t
 	}
-	return totString, nil
+	return total, nil
 }

@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 
@@ -49,8 +50,12 @@ func Start(state bool, configFile string) {
 			message := tgbotapi.NewMessage(chatIdMessage, "Error!\nOnly website http[s]://...")
 			b.Send(message)
 		} else {
-			size := StartScrape(userMessage, &c)
-			message := tgbotapi.NewMessage(chatIdMessage, strconv.Itoa(size))
+			message := tgbotapi.NewMessage(chatIdMessage, "")
+			if size, err := GetCountSymbolsInArticle(userMessage, &c); err != nil {
+				message.Text = fmt.Sprintf("Something was wrong:\n%v", err)
+			} else {
+				message.Text = strconv.Itoa(size)
+			}
 			b.Send(message)
 		}
 	}
