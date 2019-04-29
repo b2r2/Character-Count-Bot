@@ -14,16 +14,13 @@ import (
 func GetCountSymbolsInArticle(userMessage string, c *Config) (int, error) {
 	var content string
 	var err error
-	if comp := regexp.MustCompile(c.Site.Domain); comp.MatchString(userMessage) {
-		content, err = scrapeSite(userMessage, c)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		content, err = scrapeMedium(c.Medium, userMessage)
-		if err != nil {
-			return 0, err
-		}
+	callerScraper := map[string]func(string, *Config) (string, error){
+		c.Medium:      scrapeMedium,
+		c.Site.Domain: scrapeSite,
+	}
+	d := GetDomain(userMessage)
+	if content, err = callerScraper[d](userMessage, c); err != nil {
+		return 0, err
 	}
 	text, err := parse(content)
 	if err != nil {
@@ -33,7 +30,7 @@ func GetCountSymbolsInArticle(userMessage string, c *Config) (int, error) {
 	return size, nil
 }
 
-func scrapeMedium(domain, url string) (string, error) {
+func scrapeMedium(url string, c *Config) (string, error) {
 	col := colly.NewCollector(
 		colly.Async(true),
 	)
@@ -41,12 +38,12 @@ func scrapeMedium(domain, url string) (string, error) {
 		url = comp.ReplaceAllString(url, "")
 	}
 	var querySelectors map[string][]string = map[string][]string{
-		domain: {`.postArticle-content`, "section"},
+		c.Medium: {`.postArticle-content`, "section"},
 	}
 	var text string
-	var querySelector string = querySelectors[domain][0]
+	var querySelector string = querySelectors[c.Medium][0]
 	col.OnHTML(querySelector, func(e *colly.HTMLElement) {
-		var tag string = querySelectors[domain][1]
+		var tag string = querySelectors[c.Medium][1]
 		text = e.ChildText(tag)
 	})
 	col.Limit(&colly.LimitRule{
@@ -81,8 +78,7 @@ func scrapeSite(url string, c *Config) (string, error) {
 		return "", err
 	}
 	resp.Body.Close()
-	err = json.Unmarshal(data, &wpr)
-	if err != nil {
+	if err = json.Unmarshal(data, &wpr); err != nil {
 		return "", err
 	}
 	return wpr.Content.Rendered, nil
