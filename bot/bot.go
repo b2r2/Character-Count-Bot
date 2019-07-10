@@ -47,16 +47,16 @@ func Start(state bool, configFile string) {
 			continue
 		}
 		if !IsCorrectURL(userMessage, &c) {
-			message := tgbotapi.NewMessage(chatIdMessage, "Error!\nOnly website http[s]://...")
+			message := tgbotapi.NewMessage(chatIdMessage, "Bad request: use URL with procotol https or http")
 			b.Send(message)
-		} else {
-			message := tgbotapi.NewMessage(chatIdMessage, "")
-			if size, err := GetCountSymbolsInArticle(userMessage, &c); err != nil {
-				message.Text = fmt.Sprintf("Something was wrong:\n%v", err)
-			} else {
-				message.Text = strconv.Itoa(size)
-			}
-			b.Send(message)
+			continue
 		}
+		message := tgbotapi.NewMessage(chatIdMessage, "")
+		if size, err := GetCountSymbolsInArticle(userMessage, &c); err != nil {
+			message.Text = fmt.Sprintf("Something was wrong:\n%v", err)
+		} else {
+			message.Text = strconv.Itoa(size)
+		}
+		b.Send(message)
 	}
 }

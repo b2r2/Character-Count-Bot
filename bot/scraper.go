@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -37,13 +38,13 @@ func scrapeMedium(url string, c *Config) (string, error) {
 	if comp := regexp.MustCompile("edit$"); comp.MatchString(url) {
 		url = comp.ReplaceAllString(url, "")
 	}
-	var querySelectors map[string][]string = map[string][]string{
-		c.Medium: {`.postArticle-content`, "section"},
+	var querySelectors []string = []string{
+		`article`, "section",
 	}
 	var text string
-	var querySelector string = querySelectors[c.Medium][0]
+	var querySelector string = querySelectors[0]
 	col.OnHTML(querySelector, func(e *colly.HTMLElement) {
-		var tag string = querySelectors[c.Medium][1]
+		var tag string = querySelectors[1]
 		text = e.ChildText(tag)
 	})
 	col.Limit(&colly.LimitRule{
@@ -52,6 +53,9 @@ func scrapeMedium(url string, c *Config) (string, error) {
 	})
 	col.Visit(url)
 	col.Wait()
+	if text == "" {
+		return "", fmt.Errorf("Bad scrape on medium")
+	}
 	return text, nil
 }
 
@@ -79,7 +83,7 @@ func scrapeSite(url string, c *Config) (string, error) {
 	}
 	resp.Body.Close()
 	if err = json.Unmarshal(data, &wpr); err != nil {
-		return "", err
+		return "", fmt.Errorf("Bad scrape on web-site")
 	}
 	return wpr.Content.Rendered, nil
 }
@@ -87,7 +91,7 @@ func scrapeSite(url string, c *Config) (string, error) {
 func parse(text string) (string, error) {
 	re, err := regexp.Compile("\\p{Cyrillic}")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Bad parse")
 	}
 	temp := re.FindAllString(text, -1)
 	var total string

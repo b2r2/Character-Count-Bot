@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	bot.Start(true, "config.json")
+	bot.Start(false, "config.json")
 }
