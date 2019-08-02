@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	Token  string `json:"Token_Test"`
+	Token  string `json:"Token"`
+	ChatID int64  `json:"ChatID"`
 	Medium string `json:"Medium"`
 	Site   struct {
 		Login    string `json:"Login"`
