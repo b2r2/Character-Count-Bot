@@ -31,12 +31,20 @@ func Start(state bool, configFile string) {
 		if update.Message == nil {
 			continue
 		}
-		userMessage := update.Message.Text
-		chatIdMessage := update.Message.Chat.ID
-		log.Printf("[%s] %s", update.Message.From.UserName, userMessage)
+		user, err := b.GetChatMember(tgbotapi.ChatConfigWithUser{
+			ChatID: c.ChatID,
+			UserID: update.Message.From.ID})
+		if err != nil {
+			log.Panic(err)
+		}
+		if !(user.IsCreator() || user.IsAdministrator() || user.IsMember()) {
+			continue
+		}
 
+		userMessage := update.Message.Text
+		userChatID := int64(update.Message.From.ID)
 		if update.Message.IsCommand() {
-			message := tgbotapi.NewMessage(chatIdMessage, "")
+			message := tgbotapi.NewMessage(userChatID, "")
 			switch update.Message.Command() {
 			case "start":
 				message.Text = "Hello!\nI calculate how many Cyrillic characters are in the articles on the medium or telegraph\nAlso..."
@@ -47,11 +55,11 @@ func Start(state bool, configFile string) {
 			continue
 		}
 		if !IsCorrectURL(userMessage, &c) {
-			message := tgbotapi.NewMessage(chatIdMessage, "Bad request: use URL with procotol https or http")
+			message := tgbotapi.NewMessage(userChatID, "Bad request: use URL with procotol https or http")
 			b.Send(message)
 			continue
 		}
-		message := tgbotapi.NewMessage(chatIdMessage, "")
+		message := tgbotapi.NewMessage(userChatID, "")
 		if size, err := GetCountSymbolsInArticle(userMessage, &c); err != nil {
 			message.Text = fmt.Sprintf("Something was wrong:\n%v", err)
 		} else {
