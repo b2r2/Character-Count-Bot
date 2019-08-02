@@ -1,6 +1,7 @@
 {
     "Token": "telegram_token",
     "Medium": "medium",
+    "ChatID": ChatID <int64>
     "Site":{
 	"Login": "user_login",
 	"Password": "user_password",
