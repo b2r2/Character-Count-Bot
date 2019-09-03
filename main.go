@@ -1,9 +1,22 @@
 package main
 
 import (
-	"Character-Count-Bot/bot"
+	"flag"
+
+	"github.com/b2r2/Character-Count-Bot/bot"
 )
 
+var (
+	configPath string
+	state      bool
+)
+
+func init() {
+	flag.StringVar(&configPath, "config-path", "config.json", "path to config file")
+	flag.BoolVar(&state, "set-debug", false, "set debug level\ndefault value: false")
+}
+
 func main() {
-	bot.Start(false, "config.json")
+	flag.Parse()
+	bot.Start(state, configPath)
 }
