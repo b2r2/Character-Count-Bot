@@ -13,7 +13,7 @@ type Config struct {
 	Site   struct {
 		Login    string `json:"Login"`
 		Password string `json:"Password"`
-		Domain   string `json:Domain"`
+		Domain   string `json:"Domain"`
 		URL      string `json:"URL"`
 	} `json:"Site"`
 }
